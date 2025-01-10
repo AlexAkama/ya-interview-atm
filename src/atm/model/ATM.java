@@ -4,9 +4,7 @@ import java.util.Map;
 
 public interface ATM {
 
-    void load(Map<Banknote, Integer> banknoteMap);
-
-    void load(Banknote banknote, Integer countToAdd);
+    String load(Map<Banknote, Integer> banknoteMap);
 
     String issuing(int amount);
 

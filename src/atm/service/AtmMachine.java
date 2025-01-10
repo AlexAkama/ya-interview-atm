@@ -3,26 +3,55 @@ package atm.service;
 import atm.model.ATM;
 import atm.model.Banknote;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 
 public class AtmMachine implements ATM {
 
-    private static final BinaryOperator<Integer> SUB = (a, b) -> a - b;
+    private static final BinaryOperator<Integer> SUBTRACTION = (a, b) -> a - b;
 
-    private final Map<Banknote, Integer> storage = getInitBanknoteMap();
+    private final Banknote[] permitBanknotes;
+    private final Map<Banknote, Integer> storage;
 
-    @Override
-    public void load(Map<Banknote, Integer> loadMap) {
-        for (Map.Entry<Banknote, Integer> entry : loadMap.entrySet()) {
-            load(entry.getKey(), entry.getValue());
-        }
+    public AtmMachine(Banknote... banknotes) {
+        Set<Banknote> set = new HashSet<>(List.of(banknotes));
+        List<Banknote> list = new ArrayList<>(set);
+        list.sort(Comparator.comparingInt(Banknote::getNominal).reversed());
+        permitBanknotes = list.toArray(new Banknote[0]);
+        storage = getInitBanknoteMap();
     }
 
     @Override
-    public void load(Banknote banknote, Integer countToAdd) {
-        storage.merge(banknote, countToAdd, Integer::sum);
+    public String load(Map<Banknote, Integer> loadMap) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ЗАГРУЗКА:").append(System.lineSeparator());
+        for (Map.Entry<Banknote, Integer> entry : loadMap.entrySet()) {
+            sb.append("\t");
+            String banknoteName = entry.getKey().name();
+            try {
+                load(entry.getKey(), entry.getValue());
+                sb.append("Добавлено ").append(banknoteName)
+                        .append(" - ").append(entry.getValue())
+                        .append(System.lineSeparator());
+            } catch (Exception e) {
+                sb.append("АТМ не работает с ").append(banknoteName)
+                        .append(System.lineSeparator());
+            }
+        }
+        sb.setLength(sb.length() - System.lineSeparator().length());
+        return sb.toString();
+    }
+
+    private void load(Banknote banknote, Integer countToAdd) throws Exception {
+        if (storage.containsKey(banknote)) {
+            storage.merge(banknote, countToAdd, Integer::sum);
+        } else throw new Exception();
     }
 
     @Override
@@ -48,17 +77,17 @@ public class AtmMachine implements ATM {
         return String.format("В банкомате: %s денег", sum);
     }
 
-    private static Map<Banknote, Integer> getInitBanknoteMap() {
+    private Map<Banknote, Integer> getInitBanknoteMap() {
         Map<Banknote, Integer> map = new EnumMap<>(Banknote.class);
-        for (Banknote banknote : Banknote.values()) {
+        for (Banknote banknote : permitBanknotes) {
             map.put(banknote, 0);
         }
         return map;
     }
 
     private Map<Banknote, Integer> getIssueMap(int amount) throws Exception {
-        Map<Banknote, Integer> issueMap = AtmMachine.getInitBanknoteMap();
-        for (Banknote banknote : Banknote.values()) {
+        Map<Banknote, Integer> issueMap = getInitBanknoteMap();
+        for (Banknote banknote : permitBanknotes) {
             int nominal = banknote.getNominal();
             int storageCount = storage.get(banknote);
             if (amount >= nominal) {
@@ -79,7 +108,7 @@ public class AtmMachine implements ATM {
             Banknote banknote = entry.getKey();
             int countToWriteOf = issueMap.get(banknote);
             System.out.printf("\tСписано %s - %s/%s%n", banknote.name(), countToWriteOf, entry.getValue());
-            storage.merge(banknote, countToWriteOf, SUB);
+            storage.merge(banknote, countToWriteOf, SUBTRACTION);
         }
     }
 

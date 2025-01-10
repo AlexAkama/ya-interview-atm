@@ -5,7 +5,10 @@ public enum Banknote {
     B1000(1000),
     B100(100),
     B500(500),
-    B50(50);
+    B50(50),
+    B2000(2000),
+    B200(200),
+    B10(10);
 
     private final int nominal;
 
